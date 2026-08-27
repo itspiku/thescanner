@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install nepal_plate
+        run: pip install -e "packages/nepal_plate[dev]"
+      - name: Test
+        run: python -m pytest packages/nepal_plate/tests -q
+
+  licence-policy:
+    # A government deployment cannot take on a copyleft obligation, so AGPL
+    # dependencies are a build failure rather than a review comment.
+    # See docs/architecture.md#permissive-licences-only
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject AGPL dependencies
+        run: |
+          if grep -rniE '^\s*(ultralytics|yolov[58])\b' \
+               --include=requirements*.txt --include=pyproject.toml . ; then
+            echo "::error::AGPL-licensed dependency found. See docs/architecture.md"
+            exit 1
+          fi
+          echo "No AGPL dependencies detected."

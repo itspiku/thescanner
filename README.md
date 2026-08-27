@@ -1,0 +1,174 @@
+# TheScanner
+
+**Vehicle movement intelligence for Nepal.** Cameras on the road; every vehicle
+identified, its plate read, its entry and exit from a zone recorded — on
+hardware a municipality can afford, under Nepali privacy law, with the data
+staying in the country.
+
+> **Status: early. Phase 0 complete.** The domain core — plate specification,
+> layout grammars, grammar-constrained decoder and multi-frame fusion — is built
+> and tested. Models, edge pipeline and platform are not yet implemented. See
+> [`docs/PLAN.md`](docs/PLAN.md) for the full roadmap and honest status of every
+> component.
+
+---
+
+## The problem, stated precisely
+
+Nepal runs **two incompatible plate systems at the same time**, and will for
+years:
+
+- **Legacy zonal plates** — Devanagari script, `बा १ च १२३४`, colour-coded by
+  ownership (red = private, black = public, green = tourist, …). Still the
+  majority of vehicles.
+- **Embossed plates** — Latin FE-Schrift, `3 B PA 1234`, uniformly
+  black-on-white, RFID chip. Rolling out since 2020.
+
+Nearly every published Nepali ANPR handles one or the other. A system meant for
+real roads has to handle both, and must never apply one system's rules to the
+other's plate.
+
+---
+
+## What makes this different
+
+### 1. The decoder can only produce plates that could exist
+
+Conventional ANPR takes the argmax of an OCR model, then cleans it up with a
+regex. The regex arrives *after* the model's uncertainty has been thrown away.
+
+TheScanner runs CTC beam search where every beam carries a state in a finite
+state grammar of Nepali plate layouts, and can only be extended by tokens that
+grammar permits. Probability mass that argmax would have spent on impossible
+strings gets redistributed onto plausible ones.
+
+Measured: **13.0 bits** of search space removed for legacy plates (a factor of
+~7,960), **16.4 bits** for embossed (~87,800). There are exactly 224,444,220
+legal legacy plates against a raw output space of 34⁸ ≈ 1.79 × 10¹².
+
+### 2. Plate colour is a decoding prior, not decoration
+
+Legacy Nepali plates encode ownership **twice** — in the background colour *and*
+in the class letter. Colour is a large-area, low-frequency cue that survives
+motion blur and low resolution far better than glyph shape.
+
+So when a blurred class glyph is ambiguous between `च` (private), `ज` (public)
+and `ध` (not a class letter at all), the grammar deletes `ध` outright and a red
+background makes `च` win — even when it held the *least* raw probability mass of
+the three. This is tested directly, not asserted.
+
+Most ANPR pipelines convert to greyscale as step one and discard this entirely.
+
+### 3. A read is an estimate over a track, not a guess from a frame
+
+A camera gets ten to forty looks at a vehicle, each with independent blur,
+angle and lighting. The information needed to read a plate is usually present
+across the set even when no single frame carries it — which is why the
+[ICPR 2026 low-resolution benchmark](https://arxiv.org/abs/2604.22506) is built
+from tracks rather than images.
+
+Fusion here is **per-field**, not per-string: if the zone is legible in frame 3
+and the serial in frame 11, whole-string voting discards both partial reads
+while field-level voting keeps them. The assembled consensus is then
+re-validated against the grammar, so it can never be a plate that could not
+exist.
+
+### 4. Built for the deployment that actually exists
+
+Kathmandu Valley Traffic Police already run ANPR — six proprietary cameras
+feeding a 297-camera control room, with expansion to ~170 sites planned. The gap
+is not "can it be done" but "can it be done at a hundred sites on a Nepali
+public budget". Hence: edge-first, commodity hardware, permissive licences only,
+one database instead of three, and store-and-forward queues so a site keeps
+working through a power cut.
+
+### 5. Government-grade means auditable, not just encrypted
+
+Hash-chained append-only read log with per-node Ed25519 signatures, so a read
+can be defended in court. Mandatory reason-for-access logging. Automatic
+retention expiry and erasure under Nepal's Privacy Act 2075. Face recognition is
+deliberately **out of scope** — see
+[`docs/security-and-privacy.md`](docs/security-and-privacy.md).
+
+---
+
+## Repository layout
+
+```
+packages/
+  nepal_plate/     domain core — spec, grammars, decoder, fusion (zero deps) ✅
+  synthplate/      synthetic plate renderer + degradation pipeline          🚧
+services/
+  edge/            RTSP → detect → track → recognise → fuse → queue         ⬜
+  api/             ingest, screening, search, evidence chain                ⬜
+  web/             operator console                                         ⬜
+docs/
+  PLAN.md          phased delivery plan with acceptance criteria
+  architecture.md  system design
+  security-and-privacy.md
+  research/        plate specification, prior art, dataset survey
+```
+
+---
+
+## Quickstart
+
+```bash
+pip install -e packages/nepal_plate[dev]
+```
+
+```bash
+python -m pytest packages/nepal_plate/tests -q
+```
+
+```python
+from nepal_plate import parse, decode, ColourEvidence, PlateColour
+
+p = parse("बा १ च १२३४")
+p.canonical    # 'NP-L:BA-1-CHA-1234'
+p.ownership    # Ownership.PRIVATE
+p.size_class   # SizeClass.LIGHT
+
+# Every spelling of a plate must produce the same key, or watch-list
+# matching silently fails.
+parse("BA 1 CHA 1234").canonical == p.canonical   # True
+
+# Decode from recogniser output, with a colour prior.
+red = ColourEvidence({PlateColour.RED_WHITE: 0.88})
+decode(log_probs, colour=red)[0].plate.display
+```
+
+---
+
+## Documentation
+
+| | |
+|---|---|
+| [Delivery plan](docs/PLAN.md) | Phases, deliverables, acceptance criteria, risks, open questions |
+| [Architecture](docs/architecture.md) | Edge → Ingest → Screen → Exploit |
+| [Plate specification](docs/research/plate-specification.md) | Both systems, in full, with sources |
+| [Prior art](docs/research/prior-art.md) | What exists in Nepal and globally, and where the gap is |
+| [Dataset survey](docs/research/datasets.md) | What public data exists (not much) and the strategy |
+| [Security & privacy](docs/security-and-privacy.md) | Threat model, Privacy Act 2075 compliance |
+
+---
+
+## Honesty about what is and isn't proven
+
+The mechanisms above are tested, but so far on **controlled synthetic
+posteriors that isolate each mechanism** — not on real Nepali imagery at scale.
+No accuracy claim in this repository has been validated against real road
+footage yet, because the evaluation set to do that with does not exist and has
+to be built (Phase 1.7).
+
+For calibration: the winning entry in the ICPR 2026 low-resolution plate
+competition scored **82.13%**. Treat any ANPR claiming 99% on degraded imagery
+with suspicion.
+
+---
+
+## Licence
+
+Apache-2.0. Dependencies are permissive-licence-only by policy — AGPL components
+such as Ultralytics YOLO are excluded from release builds, because a copyleft
+obligation is a procurement blocker for a government deployment.
