@@ -5,11 +5,13 @@ identified, its plate read, its entry and exit from a zone recorded — on
 hardware a municipality can afford, under Nepali privacy law, with the data
 staying in the country.
 
-> **Status: early. Phase 0 complete.** The domain core — plate specification,
-> layout grammars, grammar-constrained decoder and multi-frame fusion — is built
-> and tested. Models, edge pipeline and platform are not yet implemented. See
-> [`docs/PLAN.md`](docs/PLAN.md) for the full roadmap and honest status of every
-> component.
+> **Status: early.** Two things are built and tested: the **domain core** (plate
+> specification, layout grammars, grammar-constrained decoder, multi-frame
+> fusion) and the **synthetic data generator** (renders every legal plate in
+> both systems, degrades it through a physically-ordered pipeline, and
+> synthesises multi-frame vehicle tracks). Models, edge pipeline and platform
+> are not implemented yet, and no real Nepali imagery has been evaluated.
+> [`docs/PLAN.md`](docs/PLAN.md) has the honest status of every component.
 
 ---
 
@@ -97,7 +99,7 @@ deliberately **out of scope** — see
 ```
 packages/
   nepal_plate/     domain core — spec, grammars, decoder, fusion (zero deps) ✅
-  synthplate/      synthetic plate renderer + degradation pipeline          🚧
+  synthplate/      synthetic plate renderer + degradation + track synthesis ✅
 services/
   edge/            RTSP → detect → track → recognise → fuse → queue         ⬜
   api/             ingest, screening, search, evidence chain                ⬜
@@ -114,11 +116,23 @@ docs/
 ## Quickstart
 
 ```bash
-pip install -e packages/nepal_plate[dev]
+pip install -e "packages/nepal_plate[dev]" -e "packages/synthplate[dev]"
 ```
 
 ```bash
-python -m pytest packages/nepal_plate/tests -q
+python -m pytest packages/nepal_plate/tests packages/synthplate/tests -q
+```
+
+Generate synthetic plates and eyeball them:
+
+```bash
+python -m synthplate.cli preview --out preview.png --rows 6 --cols 6
+```
+
+Build a corpus (images + JSONL labels + a reproducibility manifest):
+
+```bash
+python -m synthplate.cli generate --out data/synth --count 200000 --seed 1
 ```
 
 ```python

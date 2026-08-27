@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "synthplate"
+version = "0.1.0"
+description = "Synthetic Nepali number plate generator: renders every legal plate in both of Nepal's plate systems, with a physically-grounded degradation pipeline."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+dependencies = [
+  "nepal-plate",
+  "pillow>=10.0",
+  "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+synthplate = "synthplate.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["synthplate"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

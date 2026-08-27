@@ -87,6 +87,9 @@ for legacy plates, 16.4 for embossed.
 
 ## Phase 1 — Data 🚧
 
+The synthetic generator (1.3–1.5) is built and tested; real-data acquisition and
+the evaluation benchmark are not started.
+
 The binding constraint on the whole project. See
 [research/datasets.md](research/datasets.md).
 
@@ -94,12 +97,13 @@ The binding constraint on the whole project. See
 |---|---|---|---|
 | 1.1 | Download, verify and licence-check every public Nepali plate dataset | Written record of size, licence, annotation quality per dataset; anything licence-incompatible excluded and documented | ⬜ |
 | 1.2 | Unified annotation schema + converters | All acquired data converted to one schema, round-trip tested | ⬜ |
-| 1.3 | **Synthetic plate renderer** (`packages/synthplate`) | Renders every legal plate in both systems, all six legacy colour schemes, correct fonts and dimensions | 🚧 |
-| 1.4 | Physically-grounded degradation pipeline | n-stage random composition: relief, perspective, motion blur, defocus, rolling shutter, haze, dust, sensor noise, IR night, JPEG | ⬜ |
-| 1.5 | Track synthesis | Coherent N-frame sequences of the same plate with evolving pose/scale/blur | ⬜ |
-| 1.6 | 500k-crop synthetic corpus | Balanced across zone × class × ownership × system; generation reproducible from a seed | ⬜ |
+| 1.3 | **Synthetic plate renderer** (`packages/synthplate`) | Renders every legal plate in both systems, all six legacy colour schemes, correct dimensions, per-character boxes | ✅ |
+| 1.4 | Physically-grounded degradation pipeline | n-stage random composition ordered by physics; single difficulty knob; calibrated ground-truth quality score | ✅ |
+| 1.5 | Track synthesis | Coherent N-frame sequences: shared scene, smooth 1/distance width trajectory, mid-pass quality peak | ✅ |
+| 1.6 | 500k-crop synthetic corpus | Balanced across zone × class × ownership × system; reproducible from a seed. CLI done; corpus not yet generated at scale, and blocked on 1.9 | 🚧 |
 | 1.7 | **NepalPlate-Bench** | 3–5k real plates + ≥500 video tracks, stratified; never used for training; inter-annotator agreement ≥ 98% | ⬜ |
 | 1.8 | Verify the plate spec against DoTM primary sources | Every table in `spec.py` confirmed or corrected | ⬜ |
+| 1.9 | **Obtain authentic plate typefaces** | FE-Schrift for embossed, a Devanagari plate face for legacy. The generator currently falls back to Arial Narrow Bold / Nirmala UI and says so in every manifest. Training a deployed model on fallback-rendered glyphs would fail silently | ⬜ |
 
 **Risk.** 1.7 requires real-world collection with legal authorisation and is the
 long pole of the entire project. Start the authorisation conversation in
