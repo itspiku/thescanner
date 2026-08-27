@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "scanner-models"
+version = "0.1.0"
+description = "Multi-task Nepali plate recogniser: dual-script CTC, plate-colour classification and crop-quality regression on one trunk."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+dependencies = [
+  "nepal-plate",
+  "numpy>=1.24",
+  "pillow>=10.0",
+]
+
+[project.optional-dependencies]
+# Training pulls in PyTorch; deployment does not. An edge node installs only
+# [runtime] and never sees the ~2.5 GB of PyTorch.
+train = ["torch>=2.2", "torchvision>=0.17"]
+runtime = ["onnxruntime>=1.17"]
+dev = ["pytest>=8.0", "torch>=2.2", "onnxruntime>=1.17"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["scanner_models"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
