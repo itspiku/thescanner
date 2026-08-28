@@ -5,13 +5,13 @@ identified, its plate read, its entry and exit from a zone recorded — on
 hardware a municipality can afford, under Nepali privacy law, with the data
 staying in the country.
 
-> **Status: early.** Two things are built and tested: the **domain core** (plate
-> specification, layout grammars, grammar-constrained decoder, multi-frame
-> fusion) and the **synthetic data generator** (renders every legal plate in
-> both systems, degrades it through a physically-ordered pipeline, and
-> synthesises multi-frame vehicle tracks). Models, edge pipeline and platform
-> are not implemented yet, and no real Nepali imagery has been evaluated.
-> [`docs/PLAN.md`](docs/PLAN.md) has the honest status of every component.
+> **Status: end-to-end, on synthetic data.** The full path works — synthetic
+> plate → trained recogniser → edge agent → signed queue → platform → operator
+> console — and is verified by an end-to-end test and a runnable demo. What has
+> *not* happened is the part that decides whether any of it is good: **no real
+> Nepali road imagery has been evaluated**, because the benchmark to do it with
+> does not exist yet and has to be collected (Phase 1.7).
+> [`docs/PLAN.md`](docs/PLAN.md) carries the honest status of every item.
 
 ---
 
@@ -106,29 +106,45 @@ deliberately **out of scope** — see
 
 ```
 packages/
-  nepal_plate/     domain core — spec, grammars, decoder, fusion (zero deps) ✅
-  synthplate/      synthetic plate renderer + degradation + track synthesis ✅
+  nepal_plate/     domain core — spec, grammars, decoder, fusion (zero deps)
+  evidence/        signed, hash-chained events (shared by edge and platform)
+  synthplate/      synthetic plate renderer, degradation, track synthesis
+  scanner_models/  multi-task recogniser: CTC + colour + quality
 services/
-  edge/            RTSP → detect → track → recognise → fuse → queue         ⬜
-  api/             ingest, screening, search, evidence chain                ⬜
-  web/             operator console                                         ⬜
+  edge/            RTSP → detect → track → select → recognise → fuse → queue
+  api/             ingest, screening, search, retention, erasure
+  web/             operator console (Nepali/English)
+deploy/            Compose + Dockerfiles for the single-site tier
+scripts/
+  seed_demo.py     build a working demo through the real path
 docs/
-  PLAN.md          phased delivery plan with acceptance criteria
+  PLAN.md          phased delivery plan, with honest per-item status
   architecture.md  system design
   security-and-privacy.md
-  research/        plate specification, prior art, dataset survey
+  research/        plate spec, prior art, datasets, Phase 2 findings
 ```
+
+Everything above is built and tested: **160 tests** across five Python packages
+plus a typechecked TypeScript console. What is *not* done — a trained detector,
+a real evaluation benchmark, authentic plate typefaces, PostgreSQL verification,
+load testing — is listed per item in [`docs/PLAN.md`](docs/PLAN.md).
 
 ---
 
 ## Quickstart
 
 ```bash
-pip install -e "packages/nepal_plate[dev]" -e "packages/synthplate[dev]"
+pip install -e packages/nepal_plate -e packages/evidence -e packages/synthplate             -e packages/scanner_models -e services/edge -e services/api
 ```
 
 ```bash
-python -m pytest packages/nepal_plate/tests packages/synthplate/tests -q
+python -m pytest packages services -q
+```
+
+See the whole system running, with data generated through the real pipeline:
+
+```bash
+python scripts/seed_demo.py --out demo --reads 400
 ```
 
 Generate synthetic plates and eyeball them:

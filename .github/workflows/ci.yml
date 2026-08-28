@@ -6,9 +6,10 @@ on:
   pull_request:
 
 jobs:
-  test:
+  python:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.11", "3.12"]
     steps:
@@ -16,10 +17,40 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install nepal_plate
-        run: pip install -e "packages/nepal_plate[dev]"
+          cache: pip
+
+      - name: Install packages
+        # Ordered by dependency: nepal_plate and evidence have no internal
+        # dependencies and everything else builds on them.
+        run: |
+          pip install --upgrade pip
+          pip install -e packages/nepal_plate -e packages/evidence
+          pip install -e packages/synthplate -e packages/scanner_models
+          pip install -e services/edge -e services/api
+          pip install pytest httpx onnxruntime
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+
       - name: Test
-        run: python -m pytest packages/nepal_plate/tests -q
+        env:
+          # Test-only values. The services refuse to start without these, which
+          # is the point -- a default key would make every deployment's
+          # pseudonyms identical.
+          SCANNER_PLATE_KEY: kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
+          SCANNER_TOKEN_SECRET: tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt
+        run: python -m pytest packages services -q
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: services/web/package-lock.json
+      - run: npm --prefix services/web ci
+      - run: npm --prefix services/web run typecheck
+      - run: npm --prefix services/web run build
 
   licence-policy:
     # A government deployment cannot take on a copyleft obligation, so AGPL
@@ -30,9 +61,26 @@ jobs:
       - uses: actions/checkout@v4
       - name: Reject AGPL dependencies
         run: |
-          if grep -rniE '^\s*(ultralytics|yolov[58])\b' \
+          if grep -rniE '^\s*"?(ultralytics|yolov[58])\b' \
                --include=requirements*.txt --include=pyproject.toml . ; then
             echo "::error::AGPL-licensed dependency found. See docs/architecture.md"
             exit 1
           fi
           echo "No AGPL dependencies detected."
+
+  secrets-policy:
+    # The services refuse to run without these set, and a default value would be
+    # worse than none: it would make every deployment's plate pseudonyms and
+    # session tokens identical and pre-computable.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: No default secrets in source
+        run: |
+          if grep -rnE '(SCANNER_PLATE_KEY|SCANNER_TOKEN_SECRET|SCANNER_NODE_TOKEN)\s*[:=]\s*["'"'"'][A-Za-z0-9]{8,}' \
+               --include=*.py --include=*.yml --include=*.yaml \
+               --exclude-dir=tests --exclude-dir=.github . ; then
+            echo "::error::A secret appears to have a hardcoded default outside tests."
+            exit 1
+          fi
+          echo "No hardcoded secret defaults."
