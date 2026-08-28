@@ -26,6 +26,11 @@ models/
 *.safetensors
 !data/.gitkeep
 !models/.gitkeep
+# Evaluation results and training curves are small, and they are the evidence
+# behind the claims in docs/research/findings-phase2.md. Weights stay out;
+# the numbers they produced do not.
+!models/**/eval.json
+!models/**/history.json
 
 # Media
 *.mp4

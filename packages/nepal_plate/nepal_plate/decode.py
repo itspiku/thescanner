@@ -1,6 +1,22 @@
 """Grammar-constrained CTC decoding for Nepali plates.
 
-This is the part of the system that does the heavy lifting on degraded imagery.
+What this is for -- and what it is not
+--------------------------------------
+This was designed to be the part of the system that does the heavy lifting on
+degraded imagery. **Measurement showed otherwise**, and the docstring below is
+kept because the reasoning is worth understanding, not because the conclusion
+held.
+
+Against greedy CTC decoding on a trained recogniser, the constraint is worth
++0.001 exact-match, and no more than +0.002 under heavy distribution shift. The
+model learns the grammar from data -- it puts 3.1e-03 of its probability mass on
+grammar-illegal tokens -- so there is almost nothing left to redistribute.
+
+What the constraint *does* deliver is well-formedness: 10.0% of greedy outputs
+are not legal plates at all and cannot serve as a canonical key, whereas this
+decoder returns a field-decomposed plate or nothing. It is also what makes the
+confidence bands meaningful. Treat it as correctness and calibration machinery,
+not as an accuracy technique. See ``docs/research/findings-phase2.md``.
 
 The idea
 --------
@@ -31,10 +47,15 @@ large-area cue. So a colour classifier that is confident the plate is red
 contributes ``log P(red | ownership)`` to every path whose class letter implies
 private ownership, and effectively eliminates the rest.
 
-This is, as far as the survey in ``docs/research/prior-art.md`` found, not done
-by any existing ANPR: elsewhere plate colour is used at most to pick a country
-profile, never as a per-path decoding constraint. It is available here only
-because Nepal's legacy scheme happens to carry redundant ownership information.
+As far as the survey in ``docs/research/prior-art.md`` found, no existing ANPR
+does this -- elsewhere plate colour picks a country profile at most, never a
+per-path decoding constraint. It is available here only because Nepal's legacy
+scheme carries redundant ownership information.
+
+It also, on a trained model, does almost nothing: it changes 0.5% of legacy
+reads and nets zero accuracy, because the recogniser's mean top-1-minus-top-2
+margin per glyph is 0.927 and a prior can only break ties. Being novel and
+being useful are different things, and this one is the former.
 
 Cost
 ----

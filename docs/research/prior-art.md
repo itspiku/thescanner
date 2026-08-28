@@ -143,8 +143,8 @@ that all public Nepali plate data amounts to roughly five thousand images
 | Gap in existing work | What TheScanner does |
 |---|---|
 | Devanagari *or* embossed | One recogniser, 71-token unified vocabulary, both grammars, automatic routing by plate colour |
-| Regex applied after argmax | **Grammar-constrained CTC beam search** — the decoder can only produce syntactically legal plates. Removes 13.0 bits of search space for legacy plates, 16.4 for embossed |
-| Colour discarded in preprocessing | **Colour used as a decoding prior.** Legacy plates encode ownership twice — in the colour and in the class letter. Colour survives blur; glyph shape does not. Applied as a soft per-path log-prior, never a hard constraint |
+| Regex applied after argmax | **Grammar-constrained CTC beam search** — the decoder emits a well-formed, field-decomposed plate or an explicit refusal, never a bare string. Measured: this does *not* improve accuracy (+0.001), but 10.0% of greedy reads are not legal plates at all and cannot serve as a watch-list key. See [findings-phase2.md](findings-phase2.md) |
+| Colour discarded in preprocessing | **Colour predicted at 97.9% and used as a decoding prior.** Measured: it changes 0.5% of reads and nets nothing, because the trained recogniser is already near-certain per glyph. Retained because ownership class is useful in itself and colour–class disagreement flags an altered plate |
 | Character segmentation | Segmentation-free CTC over the whole plate |
 | Single-frame evaluation | Track-level fusion with per-field consensus, so a plate whose zone is legible in frame 3 and serial in frame 11 still reads correctly |
 | Whole-string voting | **Per-field** voting, re-validated against the grammar so consensus can never assemble an impossible plate |
@@ -156,18 +156,32 @@ that all public Nepali plate data amounts to roughly five thousand images
 
 ### Honest caveats
 
-- The colour prior applies **only to legacy plates**. Embossed plates are
-  uniformly black-on-white, so as the fleet transitions this advantage decays.
-  It is valuable now and for as long as legacy plates dominate; the grammar
-  constraint is the durable part.
-- The grammar constraint assumes plates are well-formed. A damaged, obscured or
-  deliberately altered plate may have no legal reading, and the system must
-  report *that* rather than snapping to the nearest legal plate. This is what
-  the `repaired` flags and confidence bands are for, and it needs adversarial
-  testing before deployment.
-- No claim here has yet been validated on real Nepali imagery at scale. The
-  numbers in this repository are, so far, from controlled synthetic tests that
-  isolate specific mechanisms. Real benchmarks are Phase 1–2 work.
+The first two entries in that table were the project's headline claims, and
+**measurement did not support them**. Phase 2 ran the ablation on a trained
+model and found the grammar constraint worth +0.001 and the colour prior worth
+0.000, because a recogniser trained only on legal plates has already internalised
+the grammar (3.1 × 10⁻³ of its mass sits on illegal tokens) and is already
+near-certain per glyph (top-1 minus top-2 margin of 0.927). The full account,
+including why the reasoning was wrong and what the mechanisms genuinely buy, is
+in [findings-phase2.md](findings-phase2.md).
+
+The rest of the differentiators stand, but should be read with that correction
+in mind: several of them are *architecturally* sound without being empirically
+decisive, and the difference is only visible once someone measures.
+
+Further caveats:
+
+- The colour prior applies **only to legacy plates** — embossed plates are
+  uniformly black-on-white — so even its residual value decays as the fleet
+  transitions.
+- Grammar repair converts self-evident garbage into plausible-but-wrong plates,
+  which in a law-enforcement context is the more dangerous failure. The
+  `repaired` flags and confidence bands mitigate this, but the HIGH-band
+  false-positive rate is currently 2.2% against a 0.5% target.
+- No claim here has been validated on real Nepali imagery. All numbers are from
+  synthetic data produced by the same generator the model trained on, and should
+  be read as an upper bound. NepalPlate-Bench (Phase 1.7) is the only thing that
+  can change that.
 
 ---
 

@@ -1,0 +1,107 @@
+{
+  "n_samples": 2000,
+  "split": "val",
+  "checkpoint": "models/platenet/best.pt",
+  "corpus": "data/synth",
+  "beam_width": 12,
+  "seconds": 57.6,
+  "colour_accuracy": 0.9785,
+  "strata": {
+    "ALL": {
+      "n": 2000,
+      "greedy": 0.8355,
+      "grammar": 0.8365,
+      "grammar+colour": 0.8365
+    },
+    "layout:two-row": {
+      "n": 1080,
+      "greedy": 0.9491,
+      "grammar": 0.95,
+      "grammar+colour": 0.95
+    },
+    "system:devanagari": {
+      "n": 1011,
+      "greedy": 0.8368,
+      "grammar": 0.8358,
+      "grammar+colour": 0.8358
+    },
+    "system:embossed": {
+      "n": 989,
+      "greedy": 0.8342,
+      "grammar": 0.8372,
+      "grammar+colour": 0.8372
+    },
+    "layout:single-row": {
+      "n": 920,
+      "greedy": 0.7022,
+      "grammar": 0.7033,
+      "grammar+colour": 0.7033
+    },
+    "width:90-130px": {
+      "n": 865,
+      "greedy": 0.9237,
+      "grammar": 0.926,
+      "grammar+colour": 0.926
+    },
+    "quality:moderate": {
+      "n": 850,
+      "greedy": 0.8553,
+      "grammar": 0.8541,
+      "grammar+colour": 0.8541
+    },
+    "quality:clean": {
+      "n": 759,
+      "greedy": 0.9802,
+      "grammar": 0.9829,
+      "grammar+colour": 0.9829
+    },
+    "width:60-90px": {
+      "n": 580,
+      "greedy": 0.8155,
+      "grammar": 0.8138,
+      "grammar+colour": 0.8138
+    },
+    "quality:degraded": {
+      "n": 391,
+      "greedy": 0.5115,
+      "grammar": 0.5141,
+      "grammar+colour": 0.5141
+    },
+    "width:130px+": {
+      "n": 271,
+      "greedy": 0.9852,
+      "grammar": 0.9852,
+      "grammar+colour": 0.9852
+    },
+    "width:40-60px": {
+      "n": 224,
+      "greedy": 0.5446,
+      "grammar": 0.5491,
+      "grammar+colour": 0.5491
+    },
+    "width:0-40px": {
+      "n": 60,
+      "greedy": 0.1667,
+      "grammar": 0.1667,
+      "grammar+colour": 0.1667
+    }
+  },
+  "calibration": {
+    "high": {
+      "n": 1434,
+      "accuracy": 0.9784
+    },
+    "low": {
+      "n": 154,
+      "accuracy": 0.026
+    },
+    "medium": {
+      "n": 315,
+      "accuracy": 0.8444
+    },
+    "reject": {
+      "n": 96,
+      "accuracy": 0.0
+    }
+  }
+}

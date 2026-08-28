@@ -43,7 +43,7 @@ from nepal_plate import ColourEvidence, Confidence, PlateSystem, decode
 from nepal_plate.fuse import FrameObservation, fuse_track
 from nepal_plate.grammar import GRAMMARS
 
-from .data import PlateDataset, Sample, collate, group_by_track, read_index
+from .data import PlateDataset, Sample, collate, group_by_track, read_index, split_samples
 from .model import ModelConfig, PlateNet
 from .vocab import COLOUR_CLASSES, collapse
 
@@ -102,10 +102,21 @@ def run(args: argparse.Namespace) -> int:
                           else ("cuda" if torch.cuda.is_available() else "cpu"))
     model = load_model(args.checkpoint, device)
 
-    samples = read_index(args.data, limit=args.limit)
+    samples = read_index(args.data)
     if not samples:
         print(f"no samples in {args.data}")
         return 1
+
+    # Score the held-out split by default, reproducing the trainer's split from
+    # the same seed and fraction. Evaluating on data the model was fitted to
+    # would inflate every number in the report -- and since the whole point of
+    # this harness is an honest ablation, that would make it worthless.
+    if args.split == "val":
+        _, samples = split_samples(samples, val_fraction=args.val_fraction, seed=args.split_seed)
+    elif args.split == "train":
+        samples, _ = split_samples(samples, val_fraction=args.val_fraction, seed=args.split_seed)
+    if args.limit:
+        samples = samples[: args.limit]
     # Inference-time layout decision, not the ground-truth flag: measuring with
     # a signal you will not have in production is self-deception.
     ds = PlateDataset(args.data, samples, train=False, use_layout_label=False)
@@ -169,6 +180,7 @@ def run(args: argparse.Namespace) -> int:
     elapsed = time.time() - t0
     report = {
         "n_samples": n,
+        "split": args.split,
         "checkpoint": str(args.checkpoint),
         "corpus": str(args.data),
         "beam_width": args.beam,
@@ -283,8 +295,8 @@ class _Wrap:
 
 def _print_report(report: dict) -> None:
     print(f"\n{'='*74}")
-    print(f"  {report['n_samples']:,} samples   colour head {report['colour_accuracy']:.1%}"
-          f"   {report['seconds']:.0f}s")
+    print(f"  {report['n_samples']:,} samples ({report.get('split', '?')} split)   "
+          f"colour head {report['colour_accuracy']:.1%}   {report['seconds']:.0f}s")
     print(f"{'='*74}")
     print(f"{'stratum':24s} {'n':>7s} {'greedy':>9s} {'grammar':>9s} {'+colour':>9s} {'delta':>8s}")
     print("-" * 74)
@@ -318,6 +330,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--batch-size", type=int, default=64)
     p.add_argument("--beam", type=int, default=12)
     p.add_argument("--limit", type=int, default=None)
+    p.add_argument("--split", choices=("val", "train", "all"), default="val",
+                   help="which split to score; 'val' reproduces the trainer's held-out set")
+    p.add_argument("--val-fraction", type=float, default=0.04,
+                   help="must match the value used for training")
+    p.add_argument("--split-seed", type=int, default=0,
+                   help="must match the seed used for training")
     p.add_argument("--workers", type=int, default=2)
     p.add_argument("--device", default="auto")
     p.add_argument("--fuse", action="store_true", help="also evaluate track-level fusion")

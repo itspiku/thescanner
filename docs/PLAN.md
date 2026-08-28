@@ -32,9 +32,9 @@ was 82.13%, so any target near 99% on degraded imagery would be dishonest.
 | Metric | Target | Measured on |
 |---|---|---|
 | Plate detection recall | ≥ 98% | NepalPlate-Bench, plates ≥ 40 px wide |
-| Full-plate read accuracy, good conditions | ≥ 96% | Bench, daylight, ≥ 80 px plate width |
-| Full-plate read accuracy, degraded | ≥ 80% | Bench, night/rain/blur subset, track-level |
-| False-positive rate at HIGH confidence | ≤ 0.5% | Bench — a wrong plate asserted confidently is the worst failure mode |
+| Full-plate read accuracy, good conditions | ≥ 96% | Bench, daylight, ≥ 80 px plate width — *synthetic proxy: 98.5% at ≥130 px, 92.4% at 90–130 px* |
+| Full-plate read accuracy, degraded | ≥ 80% | Bench, night/rain/blur subset, track-level — *synthetic proxy: 51.4% single-frame; track fusion not yet measured* |
+| False-positive rate at HIGH confidence | ≤ 0.5% | Bench — a wrong plate asserted confidently is the worst failure mode. **Currently 2.2% on synthetic; not met** |
 | Zone entry/exit pairing accuracy | ≥ 97% | Bench video tracks |
 | Edge throughput | ≥ 4 camera streams @ 15 fps per edge node | Jetson Orin Nano 8 GB |
 | End-to-end latency, capture → alert | ≤ 2 s p95 | Integration test |
@@ -111,7 +111,19 @@ parallel with Phase 1, not after it.
 
 ---
 
-## Phase 2 — Models ⬜
+## Phase 2 — Models 🚧
+
+**Trained and evaluated.** A 1.93 M-parameter multi-task recogniser on 50,000
+synthetic plates: **83.6% full-plate exact match**, 97.9% colour, 0.070 quality
+MAE on the held-out split.
+
+> **The ablation disproved this project's headline claim.**
+> Grammar-constrained decoding is worth **+0.001** over greedy, and the colour
+> prior **0.000**, because a model trained only on legal plates has already
+> internalised the grammar. Full account, and what the mechanisms *are* worth,
+> in [research/findings-phase2.md](research/findings-phase2.md). Two rework
+> items below follow directly from it.
+
 
 **Licensing policy: permissive only.** Ultralytics YOLO is AGPL-3.0, which is a
 procurement landmine for a government deployment — it would oblige the
@@ -129,7 +141,28 @@ behind a flag for rapid prototyping only, and is excluded from release builds.
 | 2.6 | Appearance embedding | For cross-camera re-identification and pgvector search |
 | 2.7 | Optional plate super-resolution | Only ships if it beats fusion-alone on the Bench degraded subset |
 | 2.8 | Export + quantisation | ONNX + INT8; TensorRT for Jetson, OpenVINO for x86. Accuracy loss ≤1% |
-| 2.9 | Evaluation harness | Reports constrained-vs-greedy delta, per-stratum accuracy, calibration curves |
+| 2.9 | Evaluation harness | Reports constrained-vs-greedy delta, per-stratum accuracy, calibration curves | ✅ |
+
+### Status
+
+| # | Deliverable | Status |
+|---|---|---|
+| 2.1 | Vehicle + plate detector | ⬜ blocked on annotated road scenes (1.1/1.7); ONNX adapter and motion-detection bootstrap shipped in `services/edge` |
+| 2.2 | Plate colour + script classifier | ✅ 97.9% (target ≥99%; short, but it feeds a prior now known to contribute ~0) |
+| 2.3 | Dual-script CTC recogniser | ✅ 83.6% exact match on synthetic held-out |
+| 2.4 | Crop quality estimator | ✅ MAE 0.070 |
+| 2.5 | Vehicle attribute model | ⬜ |
+| 2.6 | Appearance embedding | ⬜ |
+| 2.7 | Plate super-resolution | ⬜ — deferred; fusion is the stronger lever and enhancement must beat it to ship |
+| 2.8 | Export + quantisation | ✅ ONNX export, numerically verified against PyTorch; INT8 ⬜ |
+| 2.9 | Evaluation harness | ✅ per-stratum ablation + calibration table |
+
+### Rework arising from the evaluation
+
+| # | Deliverable | Why |
+|---|---|---|
+| 2.10 | **Widen the recogniser input for single-row plates** | Single-row plates score 70.2% against two-row plates' 94.9%. Two-row plates are unwrapped to double horizontal resolution; single-row plates are resolution-starved in the same fixed 192 px input. An artefact of preprocessing, not of the plates |
+| 2.11 | **Tighten the HIGH confidence band** | HIGH-confidence false-positive rate is **2.2%** against the ≤0.5% criterion in §1. This is the most operationally consequential number in the system and it currently fails |
 
 **Hardware note.** Training happens on a 6 GB RTX 4050. That fits the detector
 and recogniser at the sizes we need with gradient accumulation, and it is a
@@ -137,18 +170,21 @@ useful forcing function: a model that trains on 6 GB will run at the edge.
 
 ---
 
-## Phase 3 — Edge pipeline ⬜
+## Phase 3 — Edge pipeline 🚧
 
-| # | Deliverable | Acceptance criteria |
+Built and tested (`services/edge`), against synthetic and replayed input. Not
+yet run against a live RTSP camera.
+
+| # | Deliverable | Status |
 |---|---|---|
-| 3.1 | RTSP ingest with hardware decode | 4 streams @ 15 fps on Orin Nano 8 GB |
-| 3.2 | Detect → ByteTrack → crop selection | Selects the N most informative crops per track, not the N most recent |
-| 3.3 | Recognise + fuse per track | One read per vehicle passage, not per frame |
-| 3.4 | Zone entry/exit session engine | Polygon zones; open session on entry, close on exit; unclosed sessions aged out and flagged |
-| 3.5 | Signed store-and-forward queue | Ed25519 per-node signing; 72 h offline, zero loss, ordered replay |
-| 3.6 | On-device privacy | Face blurring before any image leaves the node |
-| 3.7 | Health + telemetry | Camera tamper//defocus detection, disk, thermal, model version |
-| 3.8 | OTA model update | Signed bundles, atomic swap, automatic rollback on regression |
+| 3.1 | RTSP ingest with reconnection and backlog dropping | ✅ code; ⬜ throughput unverified on Jetson |
+| 3.2 | Detect → ByteTrack → crop selection | ✅ BYTE two-round association; diversity-aware selection with a hard legibility gate |
+| 3.3 | Recognise + fuse per track | ✅ one read per passage, plus a provisional read mid-passage so alerts fire in time |
+| 3.4 | Zone entry/exit session engine | ✅ hysteresis, bottom-centre reference point, and `exited` / `track_lost` / `timed_out` distinguished |
+| 3.5 | Signed store-and-forward queue | ✅ Ed25519 + hash chain, SQLite WAL, chain resumed across restart; ⬜ 72 h soak untested |
+| 3.6 | On-device privacy | ✅ face + cabin redaction before anything reaches durable storage |
+| 3.7 | Health + telemetry | 🚧 queue/uplink status shipped; camera tamper and thermal ⬜ |
+| 3.8 | OTA model update | ⬜ |
 
 ---
 
