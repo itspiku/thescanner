@@ -53,7 +53,7 @@ import numpy as np
 from nepal_plate import Confidence
 
 from .detect import Detector
-from .identity import NodeIdentity
+from scanner_evidence import NodeIdentity
 from .privacy import PrivacyConfig, redact_frame
 from .queue import EventQueue
 from .select import Candidate, crop_plate, select

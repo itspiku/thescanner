@@ -23,7 +23,7 @@ log, applied before anything reaches durable storage.
 from __future__ import annotations
 
 from .config import CameraConfig, NodeConfig, load
-from .identity import NodeIdentity, SignedEvent, verify, verify_chain
+from scanner_evidence import NodeIdentity, SignedEvent, verify, verify_chain
 from .pipeline import EdgePipeline, PipelineConfig
 from .queue import EventQueue
 from .tracker import ByteTracker, Detection, Track

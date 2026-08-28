@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "scanner-evidence"
+version = "0.1.0"
+description = "Tamper-evident, signed event chains shared by TheScanner's edge agent and platform."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+dependencies = ["cryptography>=42.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["scanner_evidence"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

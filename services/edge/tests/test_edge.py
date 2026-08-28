@@ -14,7 +14,7 @@ from datetime import datetime, timedelta, timezone
 import numpy as np
 import pytest
 
-from scanner_edge.identity import GENESIS, NodeIdentity, SignedEvent, verify, verify_chain
+from scanner_evidence import GENESIS, NodeIdentity, SignedEvent, verify, verify_chain
 from scanner_edge.queue import EventQueue
 from scanner_edge.select import Candidate, select, sharpness
 from scanner_edge.tracker import ByteTracker, Detection, TrackState, iou_matrix
@@ -94,7 +94,7 @@ def test_another_nodes_key_cannot_verify(tmp_path):
 
 def test_canonical_serialisation_is_order_independent(identity):
     """Signatures only verify if both sides serialise identically."""
-    from scanner_edge.identity import digest
+    from scanner_evidence import digest
 
     assert digest({"a": 1, "b": 2}) == digest({"b": 2, "a": 1})
 

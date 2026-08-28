@@ -38,7 +38,7 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Callable, Sequence
 
-from .identity import SignedEvent
+from scanner_evidence import SignedEvent
 from .queue import EventQueue
 
 

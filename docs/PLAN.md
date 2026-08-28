@@ -161,7 +161,7 @@ behind a flag for rapid prototyping only, and is excluded from release builds.
 
 | # | Deliverable | Why |
 |---|---|---|
-| 2.10 | **Widen the recogniser input for single-row plates** | Single-row plates score 70.2% against two-row plates' 94.9%. Two-row plates are unwrapped to double horizontal resolution; single-row plates are resolution-starved in the same fixed 192 px input. An artefact of preprocessing, not of the plates |
+| 2.10 | **Isolate and close the single-row gap** | Single-row plates score 70.2% against two-row plates' 94.9%. Per-glyph geometry (13.6 px vs 20.4 px per glyph) explains part of it, but the gap persists at matched per-glyph resolution, so the cause is not established. Diagnose before changing the architecture — shipping on an unverified hypothesis is exactly how the grammar claim went wrong |
 | 2.11 | **Tighten the HIGH confidence band** | HIGH-confidence false-positive rate is **2.2%** against the ≤0.5% criterion in §1. This is the most operationally consequential number in the system and it currently fails |
 
 **Hardware note.** Training happens on a 6 GB RTX 4050. That fits the detector
@@ -188,19 +188,24 @@ yet run against a live RTSP camera.
 
 ---
 
-## Phase 4 — Platform ⬜
+## Phase 4 — Platform 🚧
 
-| # | Deliverable | Acceptance criteria |
+Built and tested (`services/api`), including an end-to-end test that drains a
+real signed edge queue through the real uplink into the real API. Not yet run
+against PostgreSQL with TimescaleDB — the schema is dialect-conditional and the
+suite runs on SQLite.
+
+| # | Deliverable | Status |
 |---|---|---|
-| 4.1 | Postgres + TimescaleDB + pgvector schema | Hypertable on reads, compression, continuous aggregates; 2 yr retention modelled |
-| 4.2 | NATS JetStream ingest | Sustains 10× projected national peak; at-least-once with idempotent dedup |
-| 4.3 | Screening service | Watch-list match ≤50 ms p99 |
-| 4.4 | **Evidence chain** | Hash-chained append-only log; per-read node signature; tamper detectable and provable |
-| 4.5 | Search & investigation API | Plate, partial plate, zone, time window, appearance-similarity, convoy detection |
-| 4.6 | Cloned-plate detection | Flags plate–vehicle class mismatch, colour–class mismatch, and physically impossible movement between sites |
-| 4.7 | RBAC + mandatory reason-for-access | No record readable without a logged, attributable purpose |
-| 4.8 | Retention & erasure jobs | Automatic expiry; Privacy Act 2075 erasure requests honoured and audited |
-| 4.9 | Registry integration adapter | Pluggable; degrades cleanly when the registry is unavailable |
+| 4.1 | Postgres + TimescaleDB + pgvector schema | ✅ schema, hypertable, compression policy and continuous aggregate defined and applied conditionally; ⬜ unverified against a live Postgres |
+| 4.2 | Ingest | ✅ HTTP ingest, idempotent on `(node_id, sequence)`, chain gaps recorded not closed. NATS JetStream deferred: HTTP is sufficient at Nepal's volume and one fewer component to operate |
+| 4.3 | Screening service | ✅ HMAC-indexed match, historical backfill on new entries, non-actionable below HIGH; ⬜ latency unmeasured |
+| 4.4 | **Evidence chain** | ✅ verified on ingest; failures stored and flagged rather than dropped; `scanner-api verify-node` re-checks stored reads independently |
+| 4.5 | Search & investigation API | ✅ plate, partial, zone sessions, convoy, occupancy, statistics; ⬜ appearance-similarity (needs 2.6) |
+| 4.6 | Cloned-plate detection | ✅ all three signals, plus a registry cross-check. Impossible-movement uses HIGH reads only — a misread digit produces exactly that signal |
+| 4.7 | RBAC + mandatory reason-for-access | ✅ four roles, auditor disjoint from all data access; reason logged before the query runs so a crashed query still leaves a record |
+| 4.8 | Retention & erasure jobs | ✅ per-row `expires_at` so overdue rows are queryable, not just cron-logged; erasure keeps the access log; legal holds are explicit and time-bounded |
+| 4.9 | Registry integration adapter | 🚧 cache table and cross-check implemented; ⬜ no DoTM source to plug in (open question §4.2) |
 
 ---
 

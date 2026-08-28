@@ -142,13 +142,39 @@ polish item.
 
 ## 4. Other findings
 
-**Single-row plates are much harder than two-row: 70.2% vs 94.9%.** This is an
-artefact of the preprocessing, not of the plates. Two-row plates are *unwrapped*
-— split at the row boundary and laid side by side — which doubles their
-effective horizontal resolution in a fixed 192-pixel input. Single-row plates
-get the full plate squeezed into 192 pixels with no such bonus, so they are
-resolution-starved. Widening the recogniser input, or scaling it by layout, is
-the obvious fix and is tracked as Phase 2 rework.
+**Single-row plates are much harder than two-row: 70.2% vs 94.9%.** The cause
+is only partly understood, and the first explanation reached for was wrong.
+
+The initial hypothesis was a preprocessing artefact — two-row plates are
+*unwrapped* (split at the row boundary, laid side by side), so perhaps they were
+getting more effective resolution. A plausible competing explanation is pure
+geometry: a single-row plate packs ~8 glyphs across its width while a two-row
+plate packs ~4 per row, so at equal plate pixel width a single-row glyph gets
+roughly half the horizontal pixels. Measured, that is real — mean per-glyph
+width is 13.6 px for single-row against 20.4 px for two-row.
+
+But controlling for it does **not** close the gap:
+
+| per-glyph px | single-row | two-row |
+|---|---|---|
+| 0–8 | 0.280 (n=125) | 0.342 (n=38) |
+| 8–12 | 0.600 (n=255) | **0.827** (n=133) |
+| 12–18 | 0.813 (n=374) | **0.979** (n=292) |
+| 18–26 | 0.917 (n=145) | **0.997** (n=371) |
+| 26+ | 1.000 (n=21) | 1.000 (n=246) |
+
+At matched per-glyph resolution two-row plates are still markedly easier, so
+geometry accounts for part of the effect and something else accounts for the
+rest. Candidates not yet distinguished: the unwrap's anisotropic rescaling
+magnifies each row vertically more than a single-row plate is magnified, giving
+thicker strokes relative to the sampling grid; and two-row plates carry fewer
+glyphs per row, so CTC has more timesteps per glyph within them.
+
+**This is recorded as unresolved rather than fixed.** The obvious remedy —
+widening the recogniser input — would not help if the cause is that the
+information was never in the crop, and shipping a change on an unverified
+hypothesis is how the original grammar claim got made in the first place. The
+rework item is to isolate the cause, then act.
 
 **Accuracy is dominated by plate width**, as expected: 98.5% above 130 px,
 54.9% at 40–60 px, 16.7% below 40 px. This is the axis worth engineering

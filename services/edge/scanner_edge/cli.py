@@ -25,7 +25,7 @@ from pathlib import Path
 
 from . import config as config_mod
 from .detect import MotionDetector, OnnxDetector, OnnxDetectorConfig
-from .identity import NodeIdentity, verify_chain
+from scanner_evidence import NodeIdentity, verify_chain
 from .pipeline import EdgePipeline, PipelineConfig
 from .queue import EventQueue
 from .sources import open_source

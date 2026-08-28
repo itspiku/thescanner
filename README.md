@@ -193,10 +193,10 @@ scored on a 2,000-sample held-out split:
 
 Two results that matter more than the headline:
 
-- **Single-row plates score 70.2% against two-row plates' 94.9%** — an artefact
-  of preprocessing, not of the plates. Two-row plates get unwrapped to double
-  horizontal resolution; single-row plates are resolution-starved in the same
-  fixed input. Fixable, and tracked.
+- **Single-row plates score 70.2% against two-row plates' 94.9%.** Per-glyph
+  geometry explains part of it (a single-row plate packs ~8 glyphs across its
+  width against ~4 per row), but the gap survives controlling for that, so the
+  cause is not yet established. Recorded as unresolved rather than patched.
 - **The HIGH-confidence false-positive rate is 2.2%, against a 0.5% target.**
   That criterion is not met. It is the most operationally important number here,
   because a wrong plate asserted confidently is what puts the wrong person in

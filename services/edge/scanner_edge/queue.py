@@ -41,7 +41,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterable, Iterator, Sequence
 
-from .identity import GENESIS, NodeIdentity, SignedEvent
+from scanner_evidence import GENESIS, NodeIdentity, SignedEvent
 
 SCHEMA = """
 PRAGMA journal_mode=WAL;
