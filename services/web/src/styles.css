@@ -1,0 +1,462 @@
+/* Console styling.
+ *
+ * System fonts only: no CDN, no Google Fonts, no external request of any kind.
+ * Vehicle movement data for a whole country is a national security asset, and a
+ * console that phones out to load a typeface leaks who is using it and when.
+ * The Devanagari stack is listed first because Nepali is the default language.
+ */
+
+:root {
+  --bg: #0f1115;
+  --panel: #171a21;
+  --panel-2: #1e222b;
+  --line: #2a2f3a;
+  --text: #e6e8ec;
+  --muted: #8b93a3;
+  --accent: #4c8dff;
+  --high: #2ea56b;
+  --medium: #c9942e;
+  --low: #c96a2e;
+  --reject: #a33b3b;
+  --alarm: #d4483b;
+  --radius: 8px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f5f6f8;
+    --panel: #ffffff;
+    --panel-2: #f0f2f5;
+    --line: #dfe3ea;
+    --text: #1a1d23;
+    --muted: #5f6875;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Noto Sans Devanagari", "Nirmala UI", "Segoe UI", system-ui,
+    -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+}
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+button.primary,
+button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+input {
+  font: inherit;
+  color: inherit;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.45rem 0.6rem;
+  width: 100%;
+}
+input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+/* -- chrome ------------------------------------------------------------ */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.7rem 1.2rem;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.brand {
+  display: flex;
+  flex-direction: column;
+}
+.brand strong {
+  font-size: 1.05rem;
+}
+.subtitle {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.topbar nav {
+  display: flex;
+  gap: 0.4rem;
+  flex: 1;
+  flex-wrap: wrap;
+}
+.account {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+.who {
+  font-size: 0.85rem;
+}
+.muted {
+  color: var(--muted);
+}
+
+main {
+  padding: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.banner-warn {
+  margin: 0;
+  padding: 0.6rem 1.2rem;
+  background: color-mix(in srgb, var(--medium) 22%, transparent);
+  border-bottom: 1px solid var(--medium);
+  font-size: 0.85rem;
+}
+
+/* -- panels ------------------------------------------------------------ */
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1rem 1.1rem 1.1rem;
+}
+.panel > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+}
+.panel h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+.help {
+  margin: 0.15rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.filter {
+  max-width: 200px;
+}
+.empty {
+  color: var(--muted);
+  padding: 0.8rem 0;
+}
+.error-note {
+  color: var(--alarm);
+}
+.result-count {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* -- tiles ------------------------------------------------------------- */
+
+.tiles {
+  display: flex;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+.tile {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.8rem 1.1rem;
+  min-width: 130px;
+  display: flex;
+  flex-direction: column;
+}
+.tile-alarm {
+  border-color: var(--alarm);
+}
+.tile-value {
+  font-size: 1.6rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.tile-label {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+/* -- tables ------------------------------------------------------------ */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+th {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 500;
+  border-bottom: 1px solid var(--line);
+  padding: 0.4rem 0.5rem;
+}
+td {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+td.num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.reason-cell {
+  max-width: 320px;
+  color: var(--muted);
+}
+.row-unverified {
+  background: color-mix(in srgb, var(--alarm) 12%, transparent);
+}
+.row-open {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.plate {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.plate-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.plate-thumb {
+  height: 28px;
+  border-radius: 3px;
+  border: 1px solid var(--line);
+}
+.plate-input {
+  max-width: 180px;
+}
+
+/* -- badges and flags -------------------------------------------------- */
+
+.badge {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  border: 1px solid currentColor;
+}
+.conf-high {
+  color: var(--high);
+}
+.conf-medium {
+  color: var(--medium);
+}
+.conf-low {
+  color: var(--low);
+}
+.conf-reject {
+  color: var(--reject);
+}
+
+.flag {
+  font-size: 0.72rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 4px;
+}
+.flag-repaired {
+  background: color-mix(in srgb, var(--medium) 25%, transparent);
+}
+.flag-unverified {
+  background: color-mix(in srgb, var(--alarm) 25%, transparent);
+}
+
+/* -- forms ------------------------------------------------------------- */
+
+.search-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  max-width: 620px;
+}
+.mode-tabs {
+  display: flex;
+  gap: 0.35rem;
+}
+.query-field,
+.reason-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.query-field span,
+.reason-label {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* The reason field carries a legal obligation, so it is visually the most
+   prominent control on the search screen rather than a small, optional-looking
+   input that becomes boilerplate. */
+.reason-field {
+  border-left: 3px solid var(--accent);
+  padding-left: 0.7rem;
+}
+.reason-field small {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+.reason-field small.warn {
+  color: var(--medium);
+}
+.required {
+  color: var(--alarm);
+}
+
+/* -- alerts, review, anomalies ----------------------------------------- */
+
+.alerts,
+.anomalies,
+.review-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.alert.actionable {
+  border-left: 3px solid var(--alarm);
+  padding-left: 0.6rem;
+}
+.alert-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.alert-meta {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.review-item {
+  display: flex;
+  gap: 0.9rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--line);
+  align-items: center;
+}
+.review-crop {
+  height: 46px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  /* Show the operator the real pixels, not a smoothed guess: they are being
+     asked to judge what the machine saw. */
+  image-rendering: pixelated;
+}
+.review-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.review-meta {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.review-actions {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.anomaly {
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.anomaly.sev-alert {
+  border-left: 3px solid var(--alarm);
+  padding-left: 0.6rem;
+}
+.anomaly-kind {
+  color: var(--muted);
+  margin-left: 0.6rem;
+}
+.anomaly-detail {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--muted);
+  background: var(--panel-2);
+  padding: 0.5rem;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+.anomaly-time {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+/* -- login ------------------------------------------------------------- */
+
+.login-shell {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 1rem;
+}
+.login {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.8rem;
+  width: min(360px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+.login h1 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+.login label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.login label span {
+  font-size: 0.85rem;
+  color: var(--muted);
+}

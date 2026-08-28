@@ -209,28 +209,34 @@ suite runs on SQLite.
 
 ---
 
-## Phase 5 — Applications ⬜
+## Phase 5 — Applications 🚧
 
-| # | Deliverable |
-|---|---|
-| 5.1 | Web console — React + TypeScript, MapLibre (no third-party map dependency: sovereignty) |
-| 5.2 | Live read feed, alert queue, zone occupancy dashboard |
-| 5.3 | Investigation workspace — timeline, cross-camera track, evidence export |
-| 5.4 | **Human review queue** — every low-confidence read; corrections feed training |
-| 5.5 | Nepali (नेपाली) and English UI |
-| 5.6 | Admin: cameras, zones, watch-lists, users, retention policy |
+Built (`services/web`), typechecked and built clean, and verified end to end
+against a live API seeded with `scripts/seed_demo.py`: login, dashboard, live
+feed rendering both plate systems, reason-gated search matching a romanised
+query against a Devanagari read, and the access controls refusing what they
+should.
+
+| # | Deliverable | Status |
+|---|---|---|
+| 5.1 | Web console — React + TypeScript | ✅ builds to ~165 kB JS; zero external requests (no CDN, no font host, no map provider). MapLibre deferred: it needs self-hosted tiles, which is a procurement item, not a code one |
+| 5.2 | Live feed, alert queue, zone occupancy | ✅ |
+| 5.3 | Investigation workspace | 🚧 plate / partial / convoy search and zone sessions done; ⬜ timeline view and evidence export |
+| 5.4 | **Human review queue** | ✅ queue, crop shown unsmoothed, confirm-or-correct; ⬜ corrections are stored but not yet fed back into a training set |
+| 5.5 | Nepali (नेपाली) and English UI | ✅ Nepali is the default, Devanagari numerals for counts, plate text never translated |
+| 5.6 | Admin: cameras, zones, watch-lists, users, retention | 🚧 all available via the API and CLI; ⬜ no admin UI |
 
 ---
 
 ## Phase 6 — Hardening and deployment ⬜
 
-| # | Deliverable |
-|---|---|
+| # | Deliverable | Status |
+|---|---|---|
 | 6.1 | Data Protection Impact Assessment under Privacy Act 2075 |
 | 6.2 | Threat model + independent security review + penetration test |
 | 6.3 | Adversarial testing — obscured, altered, cloned and absent plates |
 | 6.4 | Load and chaos testing — network partition, power loss, clock skew |
-| 6.5 | Docker Compose (single site) + Helm (national) |
+| 6.5 | Docker Compose (single site) + Helm (national) | 🚧 Compose, three Dockerfiles, nginx CSP and a documented secrets flow shipped in `deploy/`; ⬜ Helm chart, and nothing has been run against a live PostgreSQL |
 | 6.6 | Operator runbooks and training material, in Nepali |
 | 6.7 | Bias and error audit across zones, vehicle classes and ownership types |
 

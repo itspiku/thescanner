@@ -1,0 +1,37 @@
+# Platform API.
+#
+# Two stages so the runtime image carries no compiler and no build cache. The
+# API deliberately does not depend on scanner-models or scanner-edge: it never
+# runs inference, so PyTorch, ONNX Runtime and OpenCV have no business in an
+# internet-facing image.
+
+FROM python:3.12-slim AS build
+WORKDIR /build
+RUN pip install --no-cache-dir --upgrade pip build
+
+COPY packages/nepal_plate ./packages/nepal_plate
+COPY packages/evidence ./packages/evidence
+COPY services/api ./services/api
+
+RUN python -m build --wheel --outdir /wheels packages/nepal_plate \
+ && python -m build --wheel --outdir /wheels packages/evidence \
+ && python -m build --wheel --outdir /wheels services/api
+
+FROM python:3.12-slim
+LABEL org.opencontainers.image.title="TheScanner platform API" \
+      org.opencontainers.image.licenses="Apache-2.0"
+
+# Never run as root. A container that ingests data from field devices is the
+# most exposed component here.
+RUN useradd --system --create-home --uid 10001 scanner
+WORKDIR /app
+
+COPY --from=build /wheels /wheels
+RUN pip install --no-cache-dir /wheels/*.whl "psycopg[binary]>=3.1" \
+ && rm -rf /wheels
+
+USER scanner
+EXPOSE 8000
+
+# initdb is idempotent, so a fresh deployment and a restart take the same path.
+CMD ["/bin/sh", "-c", "scanner-api initdb && exec uvicorn --factory scanner_api.app:create_app --host 0.0.0.0 --port 8000 --proxy-headers"]

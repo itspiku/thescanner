@@ -1,0 +1,45 @@
+# Edge agent.
+#
+# Built for an x86 mini-PC or a Jetson. Carries ONNX Runtime and OpenCV but not
+# PyTorch: a node runs inference, it does not train, and PyTorch is ~2.5 GB of
+# attack surface and disk on a box sitting on a pole.
+#
+# Jetson deployments swap the base for an L4T image and install onnxruntime-gpu
+# from NVIDIA's index -- it is not on PyPI for ARM.
+
+FROM python:3.12-slim AS build
+WORKDIR /build
+RUN pip install --no-cache-dir --upgrade pip build
+
+COPY packages/nepal_plate ./packages/nepal_plate
+COPY packages/evidence ./packages/evidence
+COPY packages/scanner_models ./packages/scanner_models
+COPY services/edge ./services/edge
+
+RUN python -m build --wheel --outdir /wheels packages/nepal_plate \
+ && python -m build --wheel --outdir /wheels packages/evidence \
+ && python -m build --wheel --outdir /wheels packages/scanner_models \
+ && python -m build --wheel --outdir /wheels services/edge
+
+FROM python:3.12-slim
+LABEL org.opencontainers.image.title="TheScanner edge agent" \
+      org.opencontainers.image.licenses="Apache-2.0"
+
+# FFmpeg for RTSP decode; libGL for OpenCV.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ffmpeg libgl1 libglib2.0-0 \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN useradd --system --create-home --uid 10001 scanner
+WORKDIR /app
+
+COPY --from=build /wheels /wheels
+RUN pip install --no-cache-dir /wheels/*.whl && rm -rf /wheels
+
+# The signing key and the store-and-forward queue live here. Must be a
+# persistent volume: losing it loses undelivered reads and, worse, forks the
+# node's evidence chain on restart.
+VOLUME ["/var/lib/thescanner"]
+USER scanner
+
+CMD ["scanner-edge", "run", "--config", "/etc/thescanner/node.yaml"]

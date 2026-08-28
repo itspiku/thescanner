@@ -42,6 +42,10 @@ models/
 !docs/**/*.png
 !docs/**/*.jpg
 
+# Generated demo deployment: a database plus node signing keys plus synthetic
+# plate imagery. Regenerate with `python scripts/seed_demo.py`.
+demo/
+
 # Secrets -- an edge node signing key in git would invalidate the entire
 # evidence chain.
 .env

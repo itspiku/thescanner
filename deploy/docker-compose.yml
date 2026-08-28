@@ -1,0 +1,130 @@
+# Single-site deployment.
+#
+# This is the tier a municipality actually runs: one server, one command. The
+# national tier changes only this file and the database — the edge nodes are
+# identical either way, so a site commissioned on day one keeps working
+# unchanged as the deployment grows.
+#
+#   cp deploy/.env.example deploy/.env
+#   docker compose -f deploy/docker-compose.yml up -d
+#
+# Secrets come from .env and must be generated, never defaulted:
+#
+#   docker compose -f deploy/docker-compose.yml run --rm api scanner-api genkey
+#
+# SCANNER_PLATE_KEY in particular can never change once data exists: every
+# stored plate is indexed by its HMAC, so a new key orphans the entire history.
+
+name: thescanner
+
+services:
+  db:
+    # TimescaleDB rather than plain Postgres: reads are a time-series and the
+    # hypertable plus compression policy is most of what makes a year of
+    # retention affordable on one disk. The image is Postgres, so nothing is
+    # lost if the extension is later dropped.
+    image: timescale/timescaledb-ha:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: scanner
+      POSTGRES_USER: scanner
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      # Reads arrive in time order and are queried by time range; the default
+      # 128MB shared_buffers is far too small for that on a real server.
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    volumes:
+      - db-data:/home/postgres/pgdata/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scanner -d scanner"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # Not published to the host. The database is reachable only from the
+    # compose network; an exposed Postgres holding national movement data is
+    # the single worst configuration mistake available here.
+    expose:
+      - "5432"
+
+  minio:
+    # Self-hosted object storage. Plate crops and context frames live here
+    # rather than in a cloud bucket: data sovereignty is a hard requirement,
+    # not a preference.
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_USER:-scanner}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:?set MINIO_PASSWORD in .env}
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    expose:
+      - "9000"
+    ports:
+      - "127.0.0.1:9001:9001"   # console, loopback only
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SCANNER_DB_URL: postgresql+psycopg://scanner:${POSTGRES_PASSWORD}@db:5432/scanner
+      SCANNER_PLATE_KEY: ${SCANNER_PLATE_KEY:?generate with 'scanner-api genkey'}
+      SCANNER_TOKEN_SECRET: ${SCANNER_TOKEN_SECRET:?generate with 'scanner-api genkey'}
+      SCANNER_NODE_TOKEN: ${SCANNER_NODE_TOKEN:?generate with 'scanner-api genkey'}
+      SCANNER_S3_ENDPOINT: http://minio:9000
+      SCANNER_S3_USER: ${MINIO_USER:-scanner}
+      SCANNER_S3_PASSWORD: ${MINIO_PASSWORD}
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  # Retention is a separate, restarting service rather than a thread inside the
+  # API. Retention that shares a process with request handling is retention that
+  # stops when the API is busy or wedged, and a compliance obligation should not
+  # depend on the health of an unrelated component.
+  retention:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SCANNER_DB_URL: postgresql+psycopg://scanner:${POSTGRES_PASSWORD}@db:5432/scanner
+      SCANNER_PLATE_KEY: ${SCANNER_PLATE_KEY}
+      SCANNER_TOKEN_SECRET: ${SCANNER_TOKEN_SECRET}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - 'while true; do scanner-api sweep; sleep 3600; done'
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      # Loopback only. TLS termination belongs to a reverse proxy in front of
+      # this, with the certificate the deployment actually owns — shipping a
+      # self-signed cert here would train operators to click through warnings.
+      - "127.0.0.1:8080:80"
+
+volumes:
+  db-data:
+  minio-data:
